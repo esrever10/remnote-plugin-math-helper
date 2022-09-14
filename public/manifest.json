@@ -1,20 +1,26 @@
 {
   "manifestVersion": 1,
-  "id": "plugin_template",
-  "name": "Plugin Template",
-  "author": "remnote",
-  "repoUrl": "",
+  "id": "esrever10_math_helper",
+  "name": "MathHelper",
+  "author": "esrever10",
+  "repoUrl": "https://github.com/remnoteio/remnote-official-plugins",
+  "enableOnMobile": false,
   "version": {
     "major": 0,
     "minor": 0,
     "patch": 1
   },
-  "description": "",
-  "requestNative": false,
+  "minimumRemNoteVersion": {
+    "major": 0,
+    "minor": 0,
+    "patch": 1
+  },
+  "description": "Provides autocomplete suggestions in a popup menu when user input LaTex math formula",
+  "requestNative": true,
   "requiredScopes": [
     {
       "type": "All",
-      "level": "ReadCreateModify"
+      "level": "ReadCreateModifyDelete"
     }
   ]
 }

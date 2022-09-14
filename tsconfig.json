@@ -2,10 +2,10 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "jsx": "react-jsx",
-    "moduleResolution": "node",
-    "strict": true,
+    "jsx": "preserve",
     "strictNullChecks": true,
+    "moduleResolution": "node",
+    "strict": false,
     "noEmit": true,
     "allowJs": true,
     "skipLibCheck": true,
