@@ -9,6 +9,8 @@ import {
   WidgetLocation,
   SelectionType,
   RichTextLatexInterface,
+  RichText,
+  RemViewer,
 } from "@remnote/plugin-sdk";
 import * as R from "react";
 import clsx from "clsx";
@@ -18,8 +20,8 @@ import {
   insertSelectedKeyId,
 } from "../lib/constants";
 import * as Re from "remeda";
-import { useSyncWidgetPositionWithCaret, useLatexNewText } from "../lib/hooks";
-import { katexSymbolsMap } from "../lib/symbols";
+import { useSyncWidgetPositionWithCaret } from "../lib/hooks";
+import { symbolRules } from "../lib/rules";
 import { log } from "../lib/logging";
 
 function AutocompletePopup() {
@@ -92,14 +94,13 @@ function AutocompletePopup() {
       if (!lastPartialWord || lastPartialWord.length === 0) {
         return;
       }
-
       const matchingWords = Re.pipe(
-        Object.keys(katexSymbolsMap),
-        Re.filter((key) => {
+        Object.keys(symbolRules),
+        Re.filter((o) => {
           return (
-            key != null &&
-            key.length >= 3 &&
-            key.startsWith(lastPartialWord.toLowerCase())
+            o != null &&
+            o.length >= 2 &&
+            o.startsWith(lastPartialWord.toLowerCase())
           );
         }),
         Re.uniq(),
@@ -146,16 +147,22 @@ function AutocompletePopup() {
         )}
       >
         {autocompleteSuggestions.map((word, idx) => (
-          <div
-            key={word}
-            className={clsx(
-              "rounded-md p-2 truncate",
-              idx === selectedIdx && "rn-clr-background--hovered"
-            )}
-            onMouseEnter={() => setSelectedIdx(idx)}
-            onClick={() => insertWord(idx)}
-          >
-            {word}
+          <div className="flex flex-row">
+            <div
+              key={word}
+              className={clsx(
+                "grow rounded-md p-2 truncate",
+                idx === selectedIdx && "rn-clr-background--hovered"
+              )}
+              onMouseEnter={() => setSelectedIdx(idx)}
+              onClick={() => insertWord(idx)}
+            >
+              {word}
+            </div>
+            <div className="flex grow items-center">
+              <RichText text={symbolRules[word].split("::")[2] ? [{text: symbolRules[word].split("::")[2], i: "x"}] : ["-"]}></RichText>
+            </div>
+            
           </div>
         ))}
       </div>
@@ -172,9 +179,10 @@ function AutocompletePopup() {
   async function insertWord(idx: number) {
     const selectedWord = autocompleteSuggestions[idx];
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
+      const [replace, offset, showcase] = symbolRules[selectedWord].split("::")
       await plugin.editor.setText([
         {
-          text: selectedWord,
+          text: replace,
           i: "x",
         },
       ]);
