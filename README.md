@@ -27,3 +27,15 @@
   Then all sub rem of it can do math input!
   You can enter various mathematical operations and automatically display their results. 
   You can check [mathjs](https://mathjs.org/) to learn how to use it by example. 
+
+## Feedback
+
+- Discord: esrever10#6879
+
+## Donate
+
+- http://paypal.me/esrever10
+- https://afdian.net/a/esrever10
+- Weixin Donate：
+  
+  ![](https://raw.githubusercontent.com/esrever10/remnote-plugin-texthook/main/images/weixin.jpg)
