@@ -3,6 +3,11 @@ import {
   declareIndexPlugin,
   ReactRNPlugin,
   AppEvents,
+  useRunAsync,
+  RichTextInterface,
+  useSyncedStorageState,
+  useLocalStorageState,
+  RichTextElementInterface,
 } from "@remnote/plugin-sdk";
 import "../style.css";
 import {
@@ -10,11 +15,14 @@ import {
   selectNextKeyId,
   selectPrevKeyId,
   insertSelectedKeyId,
+  PLAYMATH_POWERUP,
+  PLAYMATH_POWERUP_ITEM,
 } from "../lib/constants";
 
 let lastFloatingWidgetId: string;
 
 async function onActivate(plugin: ReactRNPlugin) {
+  
   await plugin.app.registerWidget(
     "autocomplete_popup",
     WidgetLocation.FloatingWidget,
@@ -22,14 +30,6 @@ async function onActivate(plugin: ReactRNPlugin) {
       dimensions: { height: "auto", width: "250px" },
     }
   );
-
-  // The floating widget hotkey system currently uses
-  // a different hotkey system than the regular hotkey
-  // system because it needs to 'steal' hotkeys like
-  // tab and enter from the RemNote editor component.
-  //
-  // Hotkeys can be customised using strings like `ctrl+enter`
-  // or `tab`.
 
   await plugin.settings.registerStringSetting({
     id: selectNextKeyId,
@@ -46,15 +46,20 @@ async function onActivate(plugin: ReactRNPlugin) {
   await plugin.settings.registerStringSetting({
     id: insertSelectedKeyId,
     title: "Insert Selected Shortcut",
-    defaultValue: "tab",
+    defaultValue: "enter",
   });
+
+  var lastCaret = {x: 500} as DOMRect;
 
   const openAutocompleteWindow = async () => {
     const caret = await plugin.editor.getCaretPosition();
     lastFloatingWidgetId = await plugin.window.openFloatingWidget(
       "autocomplete_popup",
-      { top: caret ? caret.y + POPUP_Y_OFFSET : undefined, left: caret?.x }
+      { top: caret ? caret.y + POPUP_Y_OFFSET : lastCaret.y, left: caret ? caret.x : lastCaret.x }
     );
+    if (caret) {
+      lastCaret = caret;
+    }
   };
 
   await openAutocompleteWindow();
@@ -63,7 +68,31 @@ async function onActivate(plugin: ReactRNPlugin) {
   // autocomplete floating widget. If there is no current autocomplete widget
   // then open one.
 
-  plugin.event.addListener(AppEvents.EditorTextEdited, undefined, async () => {
+  plugin.event.addListener(AppEvents.EditorTextEdited, undefined, async (newText: RichTextInterface) => {
+  
+    console.log(`newText: ${newText}`);
+    const rem = await plugin.focus.getFocusedRem();
+    if (rem) {
+      const parent = await rem?.getParentRem();
+      const isPlayMath = await parent?.hasPowerup(PLAYMATH_POWERUP);
+      if (isPlayMath) {
+        const isPlayMathItem = await rem?.hasPowerup(PLAYMATH_POWERUP_ITEM);
+        if (!isPlayMathItem) {
+          await rem?.addPowerup(PLAYMATH_POWERUP_ITEM);
+        }
+        if (rem.text[0]?.i !== 'm') {
+          await rem?.setText([
+            {
+              text: newText.toString(),
+              i: "m",
+              code: true,
+            },
+          ]);
+        }
+        // await plugin.editor.moveCaret(newText.length, 1);
+      }
+    }
+    
     if (
       lastFloatingWidgetId &&
       (await plugin.window.isFloatingWidgetOpen(lastFloatingWidgetId))
@@ -72,7 +101,53 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
     await openAutocompleteWindow();
   });
+
+  await plugin.app.registerPowerup(
+    "Play Math",
+    PLAYMATH_POWERUP,
+    "A play math plugin",
+    {
+      slots: [{ 
+        code: 'scope',
+        name: 'Scppe',
+        onlyProgrammaticModifying: true,
+        hidden: true,
+      }],
+    }
+  );
+
+  await plugin.app.registerPowerup(
+    "MathItem",
+    PLAYMATH_POWERUP_ITEM,
+    "",
+    {
+      slots: [{ code: "scope", name: "Scope" }],
+    }
+  );
+  
+  await plugin.app.registerWidget(
+    "play_math",
+    WidgetLocation.UnderRemEditor,
+    {
+      dimensions: { height: "auto", width: "100%" },
+      powerupFilter: PLAYMATH_POWERUP_ITEM,
+    }
+  );
+  
+  await plugin.app.registerCommand({
+    id: "command_play_math",
+    name: "playmath",
+    action: async () => {
+      const rem = await plugin.focus.getFocusedRem();
+      await rem?.addPowerup(PLAYMATH_POWERUP);
+      const defaultText = `Play Math`;
+      await rem?.setText([defaultText]);
+      await plugin.editor.moveCaret(defaultText.length, 2)
+    },
+  });
+
 }
+
 
 async function onDeactivate(plugin: ReactRNPlugin) {
   const keys = [

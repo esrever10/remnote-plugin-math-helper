@@ -22,7 +22,6 @@ import {
 import * as Re from "remeda";
 import { useSyncWidgetPositionWithCaret } from "../lib/hooks";
 import { symbolRules } from "../lib/rules";
-import { log } from "../lib/logging";
 
 function AutocompletePopup() {
   const plugin = usePlugin();
@@ -57,7 +56,7 @@ function AutocompletePopup() {
   // while the floating autocomplete window is open.
 
   R.useEffect(() => {
-    const keys = [selectNextKey, selectPrevKey, insertSelectedKey];
+    const keys = [selectNextKey, selectPrevKey, insertSelectedKey, "enter"];
     if (!floatingWidgetId) {
       return;
     }
@@ -84,6 +83,7 @@ function AutocompletePopup() {
   // lastPartialWord to filter down the autocomplete suggestions to
   // show in the popup window.
 
+  const [lastPretext, setLastPretext] = R.useState<RichTextInterface>();
   const [lastPartialWord, setLastPartialWord] = R.useState<string>();
   const [autocompleteSuggestions, setAutocompleteSuggestions] = R.useState<
     string[]
@@ -99,7 +99,7 @@ function AutocompletePopup() {
         Re.filter((o) => {
           return (
             o != null &&
-            o.length >= 2 &&
+            o.length >= 1 &&
             o.startsWith(lastPartialWord.toLowerCase())
           );
         }),
@@ -119,15 +119,30 @@ function AutocompletePopup() {
     }
   }, [lastPartialWord, autocompleteSuggestions]);
 
-  useAPIEventListener(
-    AppEvents.EditorTextEdited,
-    undefined,
-    async (newText: RichTextInterface) => {
-      if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
-        const lpw = (newText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
+  // useAPIEventListener(
+  //   AppEvents.EditorTextEdited,
+  //   undefined,
+  //   async (newText: RichTextInterface) => {
+  //     if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
+  //       const lpw = (newText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
+  //       setLastPartialWord(lpw);
+  //     }
+  //   });
+
+  useTracker(async (reactivePlugin) => {
+    const editorText = await reactivePlugin.editor.getFocusedEditorText();
+    if (!editorText) {
+      return;
+    }
+    console.log(`editorText: ${editorText}`);
+    if (editorText.length >= 2 && editorText.at(-1) === ' ' && editorText.at(-2)?.i === 'x') {
+      const lpw = (editorText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
+      if (lpw) {
+        setLastPretext(editorText.slice(0, -2));
         setLastPartialWord(lpw);
-      }
-    });
+      } 
+    }
+  }) 
   
 
   const [selectedIdx, setSelectedIdx] = R.useState(0);
@@ -180,14 +195,25 @@ function AutocompletePopup() {
     const selectedWord = autocompleteSuggestions[idx];
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
       const [replace, offset, showcase] = symbolRules[selectedWord].split("::")
-      await plugin.editor.setText([
+      const latex: RichTextInterface = [
         {
           text: replace,
           i: "x",
-        },
-      ]);
-      setLastPartialWord("");
+        }
+      ];
+      if (lastPretext && lastPretext.length > 0 ) {
+        if (lastPretext[0].i === undefined) {
+          if (!lastPretext[0].endsWith(" ")) {
+            lastPretext[0] += " ";
+          }
+        } else if ("text" in lastPretext[0] && !lastPretext[0].text.endsWith(" ")) {
+          lastPretext[0].text += " ";
+        }
+      }
+      const result = lastPretext? lastPretext?.concat(latex, [" "]) : latex.concat[" "]
+      await plugin.editor.setText(result);
     }
+    setLastPartialWord("");
   }
 
   async function insertSelectedWord() {

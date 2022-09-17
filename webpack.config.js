@@ -61,6 +61,7 @@ const config = {
     new HtmlWebpackPlugin({
       templateContent: `
       <body></body>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/7.0.1/math.min.js"></script>
       <script type="text/javascript">
       const urlSearchParams = new URLSearchParams(window.location.search);
       const queryParams = Object.fromEntries(urlSearchParams.entries());
