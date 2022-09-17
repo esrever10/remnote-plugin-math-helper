@@ -3,7 +3,7 @@
   "id": "esrever10_math_helper",
   "name": "MathHelper",
   "author": "esrever10",
-  "repoUrl": "https://github.com/remnoteio/remnote-official-plugins",
+  "repoUrl": "https://github.com/esrever10/remnote-plugin-math-helper",
   "enableOnMobile": false,
   "version": {
     "major": 0,
@@ -15,8 +15,8 @@
     "minor": 0,
     "patch": 1
   },
-  "description": "Provides autocomplete suggestions in a popup menu when user input LaTex math formula",
-  "requestNative": true,
+  "description": "Provides autocomplete suggestions in a popup menu when user input LaTex math formula.Do a variety of mathematical operations directly in rems.",
+  "requestNative": false,
   "requiredScopes": [
     {
       "type": "All",
