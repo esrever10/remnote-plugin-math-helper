@@ -88,14 +88,28 @@ function AutocompletePopup() {
   const [autocompleteSuggestions, setAutocompleteSuggestions] = R.useState<
     string[]
   >([]);
+  const [mergedRules, setMergedRules] = R.useState({});
 
   R.useEffect(() => {
     const effect = async () => {
       if (!lastPartialWord || lastPartialWord.length === 0) {
         return;
       }
+
+      const ruleCustom = String(
+        await plugin.settings.getSetting("rule_custom")
+      );
+      const customRules = Re.fromPairs(
+        Re.map(ruleCustom.split("\n"), (x) => {
+          const [key, ...values] = x.split("::");
+          return [key, values.join("::")] as [string, string];
+        })
+      );
+
+      const mergedRules = Re.mergeAll([symbolRules, customRules]);
+      setMergedRules(mergedRules);
       const matchingWords = Re.pipe(
-        Object.keys(symbolRules),
+        Object.keys(mergedRules),
         Re.filter((o) => {
           return (
             o != null &&
@@ -118,16 +132,6 @@ function AutocompletePopup() {
       setHidden(true);
     }
   }, [lastPartialWord, autocompleteSuggestions]);
-
-  // useAPIEventListener(
-  //   AppEvents.EditorTextEdited,
-  //   undefined,
-  //   async (newText: RichTextInterface) => {
-  //     if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
-  //       const lpw = (newText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
-  //       setLastPartialWord(lpw);
-  //     }
-  //   });
 
   useTracker(async (reactivePlugin) => {
     const editorText = await reactivePlugin.editor.getFocusedEditorText();
@@ -175,7 +179,7 @@ function AutocompletePopup() {
               {word}
             </div>
             <div className="flex grow items-center">
-              <RichText text={symbolRules[word].split("::")[2] ? [{text: symbolRules[word].split("::")[2], i: "x"}] : ["-"]}></RichText>
+              <RichText text={mergedRules[word].split("::")[2] ? [{text: mergedRules[word].split("::")[2], i: "x"}] : ["-"]}></RichText>
             </div>
             
           </div>
@@ -194,7 +198,7 @@ function AutocompletePopup() {
   async function insertWord(idx: number) {
     const selectedWord = autocompleteSuggestions[idx];
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
-      const [replace, offset, showcase] = symbolRules[selectedWord].split("::")
+      const [replace, offset, showcase] = mergedRules[selectedWord].split("::")
       const latex: RichTextInterface = [
         {
           text: replace,

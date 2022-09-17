@@ -49,6 +49,13 @@ async function onActivate(plugin: ReactRNPlugin) {
     defaultValue: "enter",
   });
 
+  await plugin.settings.registerStringSetting({
+    id: "rule_custom",
+    title: "Custom rule of auto-complete. (Please check the plugin detail to see how to custom.)",
+    defaultValue: "",
+    multiline: true,
+  });
+
   var lastCaret = {x: 500} as DOMRect;
 
   const openAutocompleteWindow = async () => {
