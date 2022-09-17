@@ -15,8 +15,85 @@ import { PLAYMATH_POWERUP } from "../lib/constants";
 
 const { useState, useEffect } = React;
 
+class MapScope {
+  localScope: Map<string, any>;
+  constructor () {
+    this.localScope = new Map()
+  }
+
+  get (key) {
+    // Remember to sanitize your inputs, or use
+    // a datastructure that isn't a footgun.
+    return this.localScope.get(key)
+  }
+
+  set (key, value) {
+    return this.localScope.set(key, value)
+  }
+
+  has (key) {
+    return this.localScope.has(key)
+  }
+
+  // keys () {
+  //   return this.localScope.keys()
+  // }
+}
+
+/*
+ * This is a more fully featured example, with all methods
+ * used in mathjs.
+ *
+ */
+class AdvancedMapScope extends MapScope {
+  parentScope: any;
+  constructor (parent) {
+    super()
+    this.parentScope = parent
+  }
+
+  get (key) {
+    return this.localScope.get(key) ?? this.parentScope?.get(key)
+  }
+
+  has (key) {
+    return this.localScope.has(key) ?? this.parentScope?.get(key)
+  }
+
+  keys () {
+    if (this.parentScope) {
+      return new Set([...this.localScope.keys(), ...this.parentScope.keys()])
+    } else {
+      return this.localScope.keys()
+    }
+  }
+
+  delete (key) {
+    return this.localScope.delete(key)
+  }
+
+  clear () {
+    return this.localScope.clear()
+  }
+
+  /**
+   * Creates a child scope from this one. This is used in function calls.
+   *
+   * @returns a new Map scope that has access to the symbols in the parent, but
+   * cannot overwrite them.
+   */
+  createSubScope () {
+    return new AdvancedMapScope(this)
+  }
+
+  toString () {
+    return this.localScope.toString()
+  }
+}
+
+
 function PlayMath() {
-  const [result, setResult] = useState<string>("");
+  const [result, setResult] = useState<string>();
   const plugin = usePlugin();
 
   const widgetContext = useRunAsync(() => plugin.widget.getWidgetContext<WidgetLocation.UnderRemEditor>(), []);
@@ -39,22 +116,17 @@ function PlayMath() {
     if (scopeRichText) {
       console.log(scopeRichText![0]);
     }
-    const scope = JSON.parse(scopeRichText ? scopeRichText : "{}");
+    const defaultScope = new AdvancedMapScope({});
+    const scope = JSON.parse(scopeRichText ? scopeRichText : JSON.stringify(defaultScope));
+    console.log(`text: ${text}`);
     try {
-      console.log(`text: ${text}`);
-      try {
-        const parser = Math.parser();
-        for (var key in scope) {
-          parser.set(key, scope[key]);
-        }
-        setResult(parser.evaluate(text).toString());
-        parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(parser.getAll())]);
-      } catch (e) {
-        console.log(e.toString());
-      }
+      setResult(Math.evaluate(text, scope).toString());
+      parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(scope as AdvancedMapScope)]);
+    } catch (e) {
+      setResult(e.toString());
+    }
       
-      console.log(`result: ${result}`);
-    } catch {}
+    console.log(`result: ${result}`);
     
   }
 
