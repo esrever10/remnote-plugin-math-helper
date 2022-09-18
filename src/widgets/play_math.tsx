@@ -91,7 +91,6 @@ class AdvancedMapScope extends MapScope {
   }
 }
 
-
 function PlayMath() {
   const [result, setResult] = useState<string>();
   const plugin = usePlugin();
@@ -111,14 +110,30 @@ function PlayMath() {
       setResult("");
       return;
     }
+    
     const parentRem = await rem.getParentRem();
+
     const scopeRichText = await parentRem?.getPowerupProperty(PLAYMATH_POWERUP, 'scope');
     if (scopeRichText) {
       console.log(scopeRichText![0]);
     }
+
     const defaultScope = new AdvancedMapScope({});
     const scope = JSON.parse(scopeRichText ? scopeRichText : JSON.stringify(defaultScope));
     console.log(`text: ${text}`);
+
+    const customF = {
+      "clear": () => {
+        parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(new AdvancedMapScope({}))]);
+        setResult("cleared!");
+      }
+    }
+    
+    if (text.trim() in customF) {
+      customF[text.trim()]();
+      return;
+    }
+
     try {
       setResult(Math.evaluate(text, scope).toString());
       parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(scope as AdvancedMapScope)]);
