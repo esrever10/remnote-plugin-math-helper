@@ -114,7 +114,7 @@ function AutocompletePopup() {
           return (
             o != null &&
             o.length >= 1 &&
-            o.startsWith(lastPartialWord.toLowerCase())
+            o.startsWith(lastPartialWord)
           );
         }),
         Re.uniq(),
@@ -218,6 +218,7 @@ function AutocompletePopup() {
       await plugin.editor.setText(result);
     }
     setLastPartialWord("");
+    setHidden(true);
   }
 
   async function insertSelectedWord() {

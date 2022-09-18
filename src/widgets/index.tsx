@@ -96,7 +96,6 @@ async function onActivate(plugin: ReactRNPlugin) {
             },
           ]);
         }
-        // await plugin.editor.moveCaret(newText.length, 1);
       }
     }
     
