@@ -21,6 +21,7 @@
   - Note that hotkeys for this plugin must be specified as text in the settings - eg. `ctrl+n` or `tab` rather than using the normal hotkey system in RemNote.
 
 - You can custom the autocomplete rules in setting view. The following rules: 
+  
   ```
   RuleFormat:
     {Origin}::{Replace}::{Offset}::{Showcase}
