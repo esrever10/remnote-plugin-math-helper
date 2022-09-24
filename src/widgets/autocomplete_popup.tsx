@@ -11,6 +11,7 @@ import {
   RichTextLatexInterface,
   RichText,
   RemViewer,
+  RichTextElementInterface,
 } from "@remnote/plugin-sdk";
 import * as R from "react";
 import clsx from "clsx";
@@ -133,20 +134,34 @@ function AutocompletePopup() {
     }
   }, [lastPartialWord, autocompleteSuggestions]);
 
-  useTracker(async (reactivePlugin) => {
-    const editorText = await reactivePlugin.editor.getFocusedEditorText();
-    if (!editorText) {
-      return;
+  // useTracker(async (reactivePlugin) => {
+  //   const editorText = await reactivePlugin.editor.getFocusedEditorText();
+  //   if (!editorText) {
+  //     return;
+  //   }
+  //   console.log(`editorText: ${editorText}`);
+  //   if (editorText.length >= 2 && editorText.at(-1) === ' ' && editorText.at(-2)?.i === 'x') {
+  //     const lpw = (editorText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
+  //     if (lpw) {
+  //       setLastPretext(editorText.slice(0, -2));
+  //       setLastPartialWord(lpw);
+  //     } 
+  //   }
+  // }) 
+
+  useAPIEventListener(
+    AppEvents.EditorTextEdited,
+    undefined,
+    async (newText: RichTextInterface) => {
+      if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
+        const lpw = (newText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
+        if (lpw) {
+          setLastPretext(newText);
+          setLastPartialWord(lpw);
+        } 
+      }
     }
-    console.log(`editorText: ${editorText}`);
-    if (editorText.length >= 2 && editorText.at(-1) === ' ' && editorText.at(-2)?.i === 'x') {
-      const lpw = (editorText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
-      if (lpw) {
-        setLastPretext(editorText.slice(0, -2));
-        setLastPartialWord(lpw);
-      } 
-    }
-  }) 
+  );
   
 
   const [selectedIdx, setSelectedIdx] = R.useState(0);
@@ -199,23 +214,19 @@ function AutocompletePopup() {
     const selectedWord = autocompleteSuggestions[idx];
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
       const [replace, offset, showcase] = mergedRules[selectedWord].split("::")
-      const latex: RichTextInterface = [
-        {
-          text: replace,
-          i: "x",
-        }
-      ];
-      if (lastPretext && lastPretext.length > 0 ) {
-        if (lastPretext[0].i === undefined) {
-          if (!lastPretext[0].endsWith(" ")) {
-            lastPretext[0] += " ";
-          }
-        } else if ("text" in lastPretext[0] && !lastPretext[0].text.endsWith(" ")) {
-          lastPretext[0].text += " ";
-        }
+      var lastEl: RichTextElementInterface | undefined  = lastPretext?.slice(-1)[0];
+      if (lastEl === undefined) return;
+      var pre: RichTextInterface | undefined = lastPretext;
+      if (lastEl?.i === undefined && lastEl === ' ') {
+        pre = lastPretext?.slice(0, -1);
       }
-      const result = lastPretext? lastPretext?.concat(latex, [" "]) : latex.concat[" "]
-      await plugin.editor.setText(result);
+
+      if (pre === undefined) return;
+      lastEl = pre.slice(-1)[0];
+      if (lastEl?.i === 'x' && lastEl.text.endsWith(lastPartialWord)) {
+        lastEl.text = lastEl.text.substring(0, lastEl.text.length - lastPartialWord.length) + replace;
+      }
+      await plugin.editor.setText(pre);
     }
     setLastPartialWord("");
     setHidden(true);
