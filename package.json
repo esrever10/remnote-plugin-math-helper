@@ -55,6 +55,8 @@
     "mathjs": "11.2.1",
     "nodemon": "^2.0.15",
     "postcss": "^8.4.8",
+    "shx": "^0.3.4",
+    "bestzip": "^2.2.1",
     "react-refresh": "^0.12.0",
     "serve": "^14.0.1",
     "tailwindcss": "^3.0.23",
