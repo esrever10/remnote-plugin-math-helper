@@ -3,6 +3,7 @@
 - Provides autocomplete suggestions in a popup menu when user input LaTex math formula.
 - Provides a general rule format to customize the autocomplete behavior so that users can add arbitrary autocomplete rules and modify built-in rules, not just mathematical formulas.
 - Do a variety of mathematical operations directly in rems.
+- Automatically add space on both sides of the latex block.
 
 ## Showcase
 

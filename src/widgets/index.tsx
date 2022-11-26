@@ -22,7 +22,12 @@ import {
 let lastFloatingWidgetId: string;
 
 async function onActivate(plugin: ReactRNPlugin) {
-  
+
+  plugin.app.registerCSS(
+    'latex',
+    `.latex-node { padding: 0 6px; }`,
+  );
+
   await plugin.app.registerWidget(
     "autocomplete_popup",
     WidgetLocation.FloatingWidget,
