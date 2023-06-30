@@ -46,6 +46,23 @@ function AutocompletePopup() {
     async (reactivePlugin) => await reactivePlugin.settings.getSetting(insertSelectedKeyId)
   ) as string;
 
+  const rules = useTracker(async (reactivePlugin) => {
+    const start = new Date().getTime();
+    const ruleCustom: string = await reactivePlugin.settings.getSetting('rule_custom');
+    const customRules = Re.fromPairs(
+      Re.map(ruleCustom.split('\n'), (x) => {
+        const [key, ...values] = x.split('::');
+        return [key, values.join('::')] as [string, string];
+      })
+    );
+
+    const mergedRules = Re.mergeAll([symbolRules, customRules]);
+    setMergedRules(mergedRules);
+    const end = new Date().getTime();
+    console.warn('get rules cost is', `${end - start}ms`);
+    return mergedRules;
+  }) as {};
+
   // Steal autocomplete navigation and insertion keys from the editor
   // while the floating autocomplete window is open.
 
@@ -86,19 +103,9 @@ function AutocompletePopup() {
       if (!lastPartialWord || lastPartialWord.length === 0) {
         return;
       }
-
-      const ruleCustom = String(await plugin.settings.getSetting('rule_custom'));
-      const customRules = Re.fromPairs(
-        Re.map(ruleCustom.split('\n'), (x) => {
-          const [key, ...values] = x.split('::');
-          return [key, values.join('::')] as [string, string];
-        })
-      );
-
-      const mergedRules = Re.mergeAll([symbolRules, customRules]);
-      setMergedRules(mergedRules);
+      const start = new Date().getTime();
       const matchingWords = Re.pipe(
-        Object.keys(mergedRules),
+        Object.keys(rules),
         Re.filter((o) => {
           return o != null && o.length >= 1 && o.startsWith(lastPartialWord);
         }),
@@ -106,6 +113,8 @@ function AutocompletePopup() {
         Re.sortBy((x) => x.length)
       );
       setAutocompleteSuggestions(matchingWords);
+      const end = new Date().getTime();
+      console.warn('cost is', `${end - start}ms`);
     };
     effect();
   }, [lastPartialWord]);
@@ -113,6 +122,8 @@ function AutocompletePopup() {
   R.useEffect(() => {
     if (lastPartialWord && autocompleteSuggestions.length > 0) {
       setHidden(false);
+    } else {
+      setHidden(true);
     }
   }, [lastPartialWord, autocompleteSuggestions]);
 
@@ -129,12 +140,17 @@ function AutocompletePopup() {
   //       setLastPartialWord(lpw);
   //     }
   //   }
-  // })
+  // });
 
   useAPIEventListener(AppEvents.EditorTextEdited, undefined, async (newText: RichTextInterface) => {
     if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
-      const lpw = (newText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
-      if (lpw) {
+      var lpw = (newText.at(-2) as RichTextLatexInterface).text;
+      var index = lpw.lastIndexOf('\\');
+      if (index !== -1) {
+        lpw = lpw.slice(index);
+      }
+      if (lpw && lpw.length) {
+        console.warn('lastPartialWord2222-lpw', lpw);
         setLastPretext(newText);
         setLastPartialWord(lpw);
       }
@@ -171,13 +187,13 @@ function AutocompletePopup() {
               {word}
             </div>
             <div className="flex grow items-center">
-              <RichText
+              {/* <RichText
                 text={
                   mergedRules[word].split('::')[2]
                     ? [{ text: mergedRules[word].split('::')[2], i: 'x' }]
                     : ['-']
                 }
-              ></RichText>
+              ></RichText> */}
             </div>
           </div>
         ))}
@@ -194,6 +210,7 @@ function AutocompletePopup() {
 
   async function insertWord(idx: number) {
     const selectedWord = autocompleteSuggestions[idx];
+    console.warn(`selectedWord0: ${selectedWord}`);
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
       const [replace, offset, showcase] = mergedRules[selectedWord].split('::');
       var lastEl: RichTextElementInterface | undefined = lastPretext?.slice(-1)[0];
@@ -209,12 +226,13 @@ function AutocompletePopup() {
         lastEl.text =
           lastEl.text.substring(0, lastEl.text.length - lastPartialWord.length) + replace;
       }
-      console.log(`selectedWord: ${selectedWord}`);
+      console.warn(`selectedWord: ${selectedWord}`);
       if (document.querySelector('#controlled-popup-portal .latex-editor__input') !== null) {
         const textarea = document?.querySelector('#controlled-popup-portal .latex-editor__input');
+        console.log(`textarea: ${textarea}`);
         textarea!.value = lastEl.text;
       }
-      // await plugin.editor.insertRichText(pre);
+      // await plugin.editor.setText(pre);
     }
     setLastPartialWord('');
     setHidden(true);
