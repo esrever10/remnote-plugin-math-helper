@@ -57,7 +57,7 @@ function AutocompletePopup() {
     );
 
     const mergedRules = Re.mergeAll([symbolRules, customRules]);
-    setMergedRules(mergedRules);
+
     const end = new Date().getTime();
     console.warn('get rules cost is', `${end - start}ms`);
     return mergedRules;
@@ -96,14 +96,12 @@ function AutocompletePopup() {
   const [lastPretext, setLastPretext] = R.useState<RichTextInterface>();
   const [lastPartialWord, setLastPartialWord] = R.useState<string>();
   const [autocompleteSuggestions, setAutocompleteSuggestions] = R.useState<string[]>([]);
-  const [mergedRules, setMergedRules] = R.useState({});
 
   R.useEffect(() => {
     const effect = async () => {
       if (!lastPartialWord || lastPartialWord.length === 0) {
         return;
       }
-      const start = new Date().getTime();
       const matchingWords = Re.pipe(
         Object.keys(rules),
         Re.filter((o) => {
@@ -113,19 +111,24 @@ function AutocompletePopup() {
         Re.sortBy((x) => x.length)
       );
       setAutocompleteSuggestions(matchingWords.slice(0, 20));
-      const end = new Date().getTime();
-      console.warn('cost is', `${end - start}ms`);
+      console.warn(
+        'lastPartialWord to show',
+        lastPartialWord,
+        matchingWords,
+        matchingWords.slice(0, 20)
+      );
+      setHidden(false);
     };
     effect();
   }, [lastPartialWord]);
 
   R.useEffect(() => {
-    if (lastPartialWord && autocompleteSuggestions.length > 0) {
-      setHidden(false);
-    } else {
+    if (autocompleteSuggestions.length <= 0) {
       setHidden(true);
+    } else {
+      setHidden(false);
     }
-  }, [lastPartialWord, autocompleteSuggestions]);
+  }, [autocompleteSuggestions]);
 
   // useTracker(async (reactivePlugin) => {
   //   const editorText = await reactivePlugin.editor.getFocusedEditorText();
@@ -150,9 +153,8 @@ function AutocompletePopup() {
         lpw = lpw.slice(index);
       }
       if (lpw && lpw.length > 1) {
-        console.warn('lastPartialWord2222-lpw', lpw);
         setLastPretext(newText);
-        setLastPartialWord(lpw);
+        setLastPartialWord(lpw.trim());
       }
     }
   });
@@ -167,11 +169,11 @@ function AutocompletePopup() {
 
   const renderText: (string) => RichTextInterface = R.useMemo(
     () => (word: string) => {
-      return mergedRules[word].split('::')[2]
-        ? [{ text: mergedRules[word].split('::')[2] as string, i: 'x' }]
+      return rules[word].split('::')[2]
+        ? [{ text: rules[word].split('::')[2] as string, i: 'x' }]
         : [{ text: '-', i: 'm' }];
     },
-    [mergedRules]
+    [rules]
   );
 
   return (
@@ -213,9 +215,8 @@ function AutocompletePopup() {
 
   async function insertWord(idx: number) {
     const selectedWord = autocompleteSuggestions[idx];
-    console.warn(`selectedWord0: ${selectedWord}`);
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
-      const [replace, offset, showcase] = mergedRules[selectedWord].split('::');
+      const [replace, offset, showcase] = rules[selectedWord].split('::');
       var lastEl: RichTextElementInterface | undefined = lastPretext?.slice(-1)[0];
       if (lastEl === undefined) return;
       var pre: RichTextInterface | undefined = lastPretext;
@@ -224,22 +225,31 @@ function AutocompletePopup() {
       }
 
       if (pre === undefined) return;
-      lastEl = pre.slice(-1)[0];
-      if (lastEl?.i === 'x' && lastEl.text.endsWith(lastPartialWord)) {
-        lastEl.text =
-          lastEl.text.substring(0, lastEl.text.length - lastPartialWord.length) + replace;
-      }
-      console.warn(`selectedWord: ${selectedWord}`);
-      if (document.querySelector('#controlled-popup-portal .latex-editor__input') !== null) {
-        const textarea: HTMLTextAreaElement | null = document?.querySelector(
-          '#controlled-popup-portal .latex-editor__input'
+      const realOne = pre.slice(-1)[0];
+
+      if (realOne?.i === 'x') {
+        console.warn(
+          `selectedWord0: ${selectedWord}, lastPartialWord: ${lastPartialWord}, realOne.text: ${realOne.text}, replace: ${replace}`
         );
-        console.log(`textarea: ${textarea}`);
-        textarea!.value = lastEl.text;
+        realOne.text = realOne.text.trimRight();
+        if (realOne.text.endsWith(lastPartialWord)) {
+          realOne.text =
+            realOne.text.substring(0, realOne.text.length - lastPartialWord.length) + replace;
+          console.warn(`selectedWord: ${selectedWord}`);
+          if (document.querySelector('#controlled-popup-portal .latex-editor__input') !== null) {
+            const textarea: HTMLTextAreaElement | null = document?.querySelector(
+              '#controlled-popup-portal .latex-editor__input'
+            );
+
+            textarea!.value = realOne.text;
+            const end = textarea!.value.length;
+            textarea!.setSelectionRange(end - offset - 1, end - offset - 1);
+          }
+        }
       }
-      // await plugin.editor.setText(pre);
     }
     setLastPartialWord('');
+    setAutocompleteSuggestions([]);
     setHidden(true);
   }
 

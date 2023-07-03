@@ -6,14 +6,14 @@
   "repoUrl": "https://github.com/esrever10/remnote-plugin-math-helper",
   "enableOnMobile": true,
   "version": {
-    "major": 0,
+    "major": 1,
     "minor": 0,
-    "patch": 13
+    "patch": 15
   },
   "minimumRemNoteVersion": {
-    "major": 0,
+    "major": 1,
     "minor": 0,
-    "patch": 13
+    "patch": 15
   },
   "description": "Provides autocomplete suggestions in a popup menu when user input LaTex math formula.Do a variety of mathematical operations directly in rems.",
   "requestNative": true,
