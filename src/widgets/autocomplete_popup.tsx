@@ -112,7 +112,7 @@ function AutocompletePopup() {
         Re.uniq(),
         Re.sortBy((x) => x.length)
       );
-      setAutocompleteSuggestions(matchingWords);
+      setAutocompleteSuggestions(matchingWords.slice(0, 20));
       const end = new Date().getTime();
       console.warn('cost is', `${end - start}ms`);
     };
@@ -149,7 +149,7 @@ function AutocompletePopup() {
       if (index !== -1) {
         lpw = lpw.slice(index);
       }
-      if (lpw && lpw.length) {
+      if (lpw && lpw.length > 1) {
         console.warn('lastPartialWord2222-lpw', lpw);
         setLastPretext(newText);
         setLastPartialWord(lpw);
@@ -165,6 +165,15 @@ function AutocompletePopup() {
     }
   }, [lastPartialWord]);
 
+  const renderText: (string) => RichTextInterface = R.useMemo(
+    () => (word: string) => {
+      return mergedRules[word].split('::')[2]
+        ? [{ text: mergedRules[word].split('::')[2] as string, i: 'x' }]
+        : [{ text: '-', i: 'm' }];
+    },
+    [mergedRules]
+  );
+
   return (
     <div className={clsx('p-[3px] rounded-lg', hidden && 'hidden')}>
       <div
@@ -174,7 +183,7 @@ function AutocompletePopup() {
         )}
       >
         {autocompleteSuggestions.map((word, idx) => (
-          <div className="flex flex-row">
+          <div key={idx} className="flex flex-row">
             <div
               key={word}
               className={clsx(
@@ -187,13 +196,7 @@ function AutocompletePopup() {
               {word}
             </div>
             <div className="flex grow items-center">
-              {/* <RichText
-                text={
-                  mergedRules[word].split('::')[2]
-                    ? [{ text: mergedRules[word].split('::')[2], i: 'x' }]
-                    : ['-']
-                }
-              ></RichText> */}
+              <RichText text={renderText(word)}></RichText>
             </div>
           </div>
         ))}
@@ -228,7 +231,9 @@ function AutocompletePopup() {
       }
       console.warn(`selectedWord: ${selectedWord}`);
       if (document.querySelector('#controlled-popup-portal .latex-editor__input') !== null) {
-        const textarea = document?.querySelector('#controlled-popup-portal .latex-editor__input');
+        const textarea: HTMLTextAreaElement | null = document?.querySelector(
+          '#controlled-popup-portal .latex-editor__input'
+        );
         console.log(`textarea: ${textarea}`);
         textarea!.value = lastEl.text;
       }
