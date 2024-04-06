@@ -11,6 +11,7 @@ import {
 } from '@remnote/plugin-sdk';
 
 import '../style.css';
+import '../App.css';
 import {
   POPUP_Y_OFFSET,
   selectNextKeyId,
