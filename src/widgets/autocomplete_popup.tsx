@@ -174,8 +174,9 @@ function AutocompletePopup() {
       if (newTextArray.length === 0) {
         return;
       }
-      const newText: RichTextElementInterface = newTextArray.at(-1)!;
-      if (newText.i === 'x') {
+      const newText = newTextArray.findLast((x) => x.i === 'x');
+
+      if (newText && newText.i === 'x') {
         var lpw = (newText as RichTextLatexInterface).text;
         var index = lpw.lastIndexOf('\\');
         if (index !== -1) {
