@@ -3,11 +3,7 @@ import {
   declareIndexPlugin,
   ReactRNPlugin,
   AppEvents,
-  useRunAsync,
   RichTextInterface,
-  useSyncedStorageState,
-  useLocalStorageState,
-  RichTextElementInterface,
 } from '@remnote/plugin-sdk';
 
 import '../style.css';
@@ -17,10 +13,9 @@ import {
   selectNextKeyId,
   selectPrevKeyId,
   insertSelectedKeyId,
-  PLAYMATH_POWERUP,
-  PLAYMATH_POWERUP_ITEM,
   POPUP_X_OFFSET,
 } from '../lib/constants';
+import { Logger } from './logger';
 
 let lastFloatingWidgetId: string;
 
@@ -59,7 +54,10 @@ async function onActivate(plugin: ReactRNPlugin) {
   var lastCaret = { x: 500, y: 0 } as DOMRect;
 
   const openAutocompleteWindow = async () => {
-    const caret = await plugin.editor.getCaretPosition();
+    const caret: DOMRect | undefined = await plugin.editor.getCaretPosition();
+    Logger.debug(`caret: ${caret?.x}, ${caret?.y}`);
+    Logger.debug(`lastCaret: ${lastCaret.x}, ${lastCaret.y}`);
+
     lastFloatingWidgetId = await plugin.window.openFloatingWidget('autocomplete_popup', {
       top: caret ? caret.y + POPUP_Y_OFFSET : lastCaret.y,
       left: caret ? caret.x - POPUP_X_OFFSET : lastCaret.x,
@@ -75,72 +73,15 @@ async function onActivate(plugin: ReactRNPlugin) {
   // autocomplete floating widget. If there is no current autocomplete widget
   // then open one.
 
-  plugin.event.addListener(
-    AppEvents.EditorTextEdited,
-    undefined,
-    async (newText: RichTextInterface) => {
-      console.log(`newText: ${newText}`);
-      const rem = await plugin.focus.getFocusedRem();
-      if (rem) {
-        const parent = await rem?.getParentRem();
-        const isPlayMath = await parent?.hasPowerup(PLAYMATH_POWERUP);
-        if (isPlayMath) {
-          const isPlayMathItem = await rem?.hasPowerup(PLAYMATH_POWERUP_ITEM);
-          if (!isPlayMathItem) {
-            await rem?.addPowerup(PLAYMATH_POWERUP_ITEM);
-          }
-          if (rem.text && rem.text[0]?.i !== 'm') {
-            await rem?.setText([
-              {
-                text: newText.toString(),
-                i: 'm',
-                code: true,
-              },
-            ]);
-          }
-        }
-      }
-
-      if (
-        lastFloatingWidgetId &&
-        (await plugin.window.isFloatingWidgetOpen(lastFloatingWidgetId))
-      ) {
-        return;
-      }
-      await openAutocompleteWindow();
+  plugin.event.addListener(AppEvents.EditorTextEdited, undefined, async (_: RichTextInterface) => {
+    const isFloatWigetOpen = await plugin.window.isFloatingWidgetOpen(lastFloatingWidgetId);
+    Logger.debug(
+      `lastFloatingWidgetId, isFloatWigetOpen: ${lastFloatingWidgetId}, ${isFloatWigetOpen}`
+    );
+    if (lastFloatingWidgetId && isFloatWigetOpen) {
+      return;
     }
-  );
-
-  await plugin.app.registerPowerup('Play Math', PLAYMATH_POWERUP, 'A play math plugin', {
-    slots: [
-      {
-        code: 'scope',
-        name: 'Scppe',
-        onlyProgrammaticModifying: true,
-        hidden: true,
-      },
-    ],
-  });
-
-  await plugin.app.registerPowerup('MathItem', PLAYMATH_POWERUP_ITEM, '', {
-    slots: [{ code: 'scope', name: 'Scope' }],
-  });
-
-  await plugin.app.registerWidget('play_math', WidgetLocation.UnderRemEditor, {
-    dimensions: { height: 'auto', width: '100%' },
-    powerupFilter: PLAYMATH_POWERUP_ITEM,
-  });
-
-  await plugin.app.registerCommand({
-    id: 'command_play_math',
-    name: 'playmath',
-    action: async () => {
-      const rem = await plugin.focus.getFocusedRem();
-      await rem?.addPowerup(PLAYMATH_POWERUP);
-      const defaultText = `Play Math`;
-      await rem?.setText([defaultText]);
-      await plugin.editor.moveCaret(defaultText.length, 2);
-    },
+    await openAutocompleteWindow();
   });
 }
 

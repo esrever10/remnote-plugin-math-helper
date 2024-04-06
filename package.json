@@ -16,7 +16,7 @@
     ]
   },
   "dependencies": {
-    "@remnote/plugin-sdk": "0.0.28",
+    "@remnote/plugin-sdk": "0.0.39",
     "dayjs": "^1.10.8",
     "mathjs": "11.2.1",
     "mustache": "^4.2.0",

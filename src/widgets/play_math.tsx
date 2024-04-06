@@ -1,38 +1,37 @@
-import React from "react";
+import React from 'react';
 import {
   AppEvents,
   renderWidget,
   RichTextElementTextInterface,
   useAPIEventListener,
-  useLocalStorageState,
   usePlugin,
   useRunAsync,
-  useSyncedStorageState,
   WidgetLocation,
-} from "@remnote/plugin-sdk";
-import * as Math from "mathjs";
-import { PLAYMATH_POWERUP } from "../lib/constants";
+} from '@remnote/plugin-sdk';
+import * as Math from 'mathjs';
+import { PLAYMATH_POWERUP } from '../lib/constants';
+import { Logger } from './logger';
 
 const { useState, useEffect } = React;
 
 class MapScope {
   localScope: Map<string, any>;
-  constructor () {
-    this.localScope = new Map()
+  constructor() {
+    this.localScope = new Map();
   }
 
-  get (key) {
+  get(key) {
     // Remember to sanitize your inputs, or use
     // a datastructure that isn't a footgun.
-    return this.localScope.get(key)
+    return this.localScope.get(key);
   }
 
-  set (key, value) {
-    return this.localScope.set(key, value)
+  set(key, value) {
+    return this.localScope.set(key, value);
   }
 
-  has (key) {
-    return this.localScope.has(key)
+  has(key) {
+    return this.localScope.has(key);
   }
 
   // keys () {
@@ -47,33 +46,33 @@ class MapScope {
  */
 class AdvancedMapScope extends MapScope {
   parentScope: any;
-  constructor (parent) {
-    super()
-    this.parentScope = parent
+  constructor(parent) {
+    super();
+    this.parentScope = parent;
   }
 
-  get (key) {
-    return this.localScope.get(key) ?? this.parentScope?.get(key)
+  get(key) {
+    return this.localScope.get(key) ?? this.parentScope?.get(key);
   }
 
-  has (key) {
-    return this.localScope.has(key) ?? this.parentScope?.get(key)
+  has(key) {
+    return this.localScope.has(key) ?? this.parentScope?.get(key);
   }
 
-  keys () {
+  keys() {
     if (this.parentScope) {
-      return new Set([...this.localScope.keys(), ...this.parentScope.keys()])
+      return new Set([...this.localScope.keys(), ...this.parentScope.keys()]);
     } else {
-      return this.localScope.keys()
+      return this.localScope.keys();
     }
   }
 
-  delete (key) {
-    return this.localScope.delete(key)
+  delete(key) {
+    return this.localScope.delete(key);
   }
 
-  clear () {
-    return this.localScope.clear()
+  clear() {
+    return this.localScope.clear();
   }
 
   /**
@@ -82,12 +81,12 @@ class AdvancedMapScope extends MapScope {
    * @returns a new Map scope that has access to the symbols in the parent, but
    * cannot overwrite them.
    */
-  createSubScope () {
-    return new AdvancedMapScope(this)
+  createSubScope() {
+    return new AdvancedMapScope(this);
   }
 
-  toString () {
-    return this.localScope.toString()
+  toString() {
+    return this.localScope.toString();
   }
 }
 
@@ -95,7 +94,10 @@ function PlayMath() {
   const [result, setResult] = useState<string>();
   const plugin = usePlugin();
 
-  const widgetContext = useRunAsync(() => plugin.widget.getWidgetContext<WidgetLocation.UnderRemEditor>(), []);
+  const widgetContext = useRunAsync(
+    () => plugin.widget.getWidgetContext<WidgetLocation.UnderRemEditor>(),
+    []
+  );
 
   async function syncText() {
     const rem = await plugin.rem.findOne(widgetContext?.remId);
@@ -107,28 +109,30 @@ function PlayMath() {
     }
     const text = (rem?.text[0] as RichTextElementTextInterface).text;
     if (!text) {
-      setResult("");
+      setResult('');
       return;
     }
-    
+
     const parentRem = await rem.getParentRem();
 
     const scopeRichText = await parentRem?.getPowerupProperty(PLAYMATH_POWERUP, 'scope');
     if (scopeRichText) {
-      console.log(scopeRichText![0]);
+      Logger.debug(`${scopeRichText![0]}`);
     }
 
     const defaultScope = new AdvancedMapScope({});
     const scope = JSON.parse(scopeRichText ? scopeRichText : JSON.stringify(defaultScope));
-    console.log(`text: ${text}`);
+    Logger.debug(`text: ${text}`);
 
     const customF = {
-      "clear": () => {
-        parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(new AdvancedMapScope({}))]);
-        setResult("cleared!");
-      }
-    }
-    
+      clear: () => {
+        parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [
+          JSON.stringify(new AdvancedMapScope({})),
+        ]);
+        setResult('cleared!');
+      },
+    };
+
     if (text.trim() in customF) {
       customF[text.trim()]();
       return;
@@ -136,15 +140,15 @@ function PlayMath() {
 
     try {
       setResult(Math.evaluate(text, scope).toString());
-      parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [JSON.stringify(scope as AdvancedMapScope)]);
+      parentRem?.setPowerupProperty(PLAYMATH_POWERUP, 'scope', [
+        JSON.stringify(scope as AdvancedMapScope),
+      ]);
     } catch (e) {
       setResult(e.toString());
     }
-      
-    console.log(`result: ${result}`);
-    
-  }
 
+    Logger.debug(`result: ${result}`);
+  }
 
   useAPIEventListener(AppEvents.RemChanged, widgetContext?.remId, async () => {
     syncText();
@@ -154,9 +158,7 @@ function PlayMath() {
     syncText();
   }, [widgetContext?.remId]);
 
-  return (
-    <div className="ml-10 text-blue-500">= {result}</div>
-  );
+  return <div className="ml-10 text-blue-500">= {result}</div>;
 }
 
 renderWidget(PlayMath);

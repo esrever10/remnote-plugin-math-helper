@@ -7,11 +7,10 @@ import {
   useRunAsync,
   useTracker,
   WidgetLocation,
-  SelectionType,
   RichTextLatexInterface,
   RichText,
-  RemViewer,
   RichTextElementInterface,
+  RichTextElementTextInterface,
 } from '@remnote/plugin-sdk';
 import * as R from 'react';
 import clsx from 'clsx';
@@ -19,6 +18,7 @@ import { selectNextKeyId, selectPrevKeyId, insertSelectedKeyId } from '../lib/co
 import * as Re from 'remeda';
 import { useSyncWidgetPositionWithCaret } from '../lib/hooks';
 import { symbolRules } from '../lib/rules';
+import { Logger } from './logger';
 
 function AutocompletePopup() {
   const plugin = usePlugin();
@@ -29,6 +29,7 @@ function AutocompletePopup() {
 
   const [hidden, setHidden] = R.useState(true);
   const floatingWidgetId = ctx?.floatingWidgetId;
+  Logger.debug(`floatingWidgetId: ${floatingWidgetId}`);
 
   useSyncWidgetPositionWithCaret(floatingWidgetId, hidden);
 
@@ -59,7 +60,7 @@ function AutocompletePopup() {
     const mergedRules = Re.mergeAll([symbolRules, customRules]);
 
     const end = new Date().getTime();
-    console.warn('get rules cost is', `${end - start}ms`);
+    Logger.debug(`get rules cost is ${end - start}ms`);
     return mergedRules;
   }) as {};
 
@@ -93,7 +94,7 @@ function AutocompletePopup() {
   // lastPartialWord to filter down the autocomplete suggestions to
   // show in the popup window.
 
-  const [lastPretext, setLastPretext] = R.useState<RichTextInterface>();
+  const [lastPretext, setLastPretext] = R.useState<RichTextElementInterface>();
   const [lastPartialWord, setLastPartialWord] = R.useState<string>();
   const [autocompleteSuggestions, setAutocompleteSuggestions] = R.useState<string[]>([]);
 
@@ -111,11 +112,11 @@ function AutocompletePopup() {
         Re.sortBy((x) => x.length)
       );
       setAutocompleteSuggestions(matchingWords.slice(0, 20));
-      console.warn(
-        'lastPartialWord to show',
-        lastPartialWord,
-        matchingWords,
-        matchingWords.slice(0, 20)
+      Logger.debug(
+        `lastPartialWord to show: 
+        ${lastPartialWord},
+        ${matchingWords},
+        ${matchingWords.slice(0, 20)}`
       );
       setHidden(false);
     };
@@ -135,7 +136,7 @@ function AutocompletePopup() {
   //   if (!editorText) {
   //     return;
   //   }
-  //   console.log(`editorText: ${editorText}`);
+  // Logger.debug(`editorText: ${editorText}`);
   //   if (editorText.length >= 2 && editorText.at(-1) === ' ' && editorText.at(-2)?.i === 'x') {
   //     const lpw = (editorText.at(-2) as RichTextLatexInterface).text?.match(/[\\|\{}](\w+)$/)?.[0];
   //     if (lpw) {
@@ -145,19 +146,49 @@ function AutocompletePopup() {
   //   }
   // });
 
-  useAPIEventListener(AppEvents.EditorTextEdited, undefined, async (newText: RichTextInterface) => {
-    if (newText.length >= 2 && newText.at(-1) === ' ' && newText.at(-2)?.i === 'x') {
-      var lpw = (newText.at(-2) as RichTextLatexInterface).text;
-      var index = lpw.lastIndexOf('\\');
-      if (index !== -1) {
-        lpw = lpw.slice(index);
+  const formatRichText = (richText: RichTextInterface) => {
+    return richText
+      .map((x) => {
+        if (x.i === undefined) return `[${x as string}]`;
+        let res = '';
+        switch (x.i) {
+          case 'x':
+            res = `x: ${(x as RichTextLatexInterface).text}`;
+            break;
+          case 'm':
+            res = `m: ${(x as RichTextElementTextInterface).text}`;
+            break;
+          default:
+            res = `${x.i}`;
+        }
+        return `[${res}]`;
+      })
+      .join(', ');
+  };
+
+  useAPIEventListener(
+    AppEvents.EditorTextEdited,
+    undefined,
+    async (newTextArray: RichTextInterface) => {
+      Logger.debug(formatRichText(newTextArray));
+      if (newTextArray.length === 0) {
+        return;
       }
-      if (lpw && lpw.length > 1) {
-        setLastPretext(newText);
-        setLastPartialWord(lpw.trim());
+      const newText: RichTextElementInterface = newTextArray.at(-1)!;
+      if (newText.i === 'x') {
+        var lpw = (newText as RichTextLatexInterface).text;
+        var index = lpw.lastIndexOf('\\');
+        if (index !== -1) {
+          lpw = lpw.slice(index);
+        }
+        Logger.debug(`lpw: ${lpw}`);
+        if (lpw && lpw.length > 1) {
+          setLastPretext(newText);
+          setLastPartialWord(lpw.trim());
+        }
       }
     }
-  });
+  );
 
   const [selectedIdx, setSelectedIdx] = R.useState(0);
 
@@ -197,7 +228,7 @@ function AutocompletePopup() {
             >
               {word}
             </div>
-            <div className="flex grow items-center">
+            <div className="flex items-center grow">
               <RichText text={renderText(word)}></RichText>
             </div>
           </div>
@@ -217,25 +248,17 @@ function AutocompletePopup() {
     const selectedWord = autocompleteSuggestions[idx];
     if (lastPartialWord && selectedWord && selectedWord.length > 0) {
       const [replace, offset, showcase] = rules[selectedWord].split('::');
-      var lastEl: RichTextElementInterface | undefined = lastPretext?.slice(-1)[0];
-      if (lastEl === undefined) return;
-      var pre: RichTextInterface | undefined = lastPretext;
-      if (lastEl?.i === undefined && lastEl === ' ') {
-        pre = lastPretext?.slice(0, -1);
-      }
-
-      if (pre === undefined) return;
-      const realOne = pre.slice(-1)[0];
+      const realOne = lastPretext;
 
       if (realOne?.i === 'x') {
-        console.warn(
-          `selectedWord0: ${selectedWord}, lastPartialWord: ${lastPartialWord}, realOne.text: ${realOne.text}, replace: ${replace}`
+        Logger.debug(
+          `selectedWord: ${selectedWord}, lastPartialWord: ${lastPartialWord}, realOne.text: ${realOne.text}, replace: ${replace}`
         );
-        realOne.text = realOne.text.trimRight();
+        realOne.text = realOne.text.trimEnd();
         if (realOne.text.endsWith(lastPartialWord)) {
           realOne.text =
             realOne.text.substring(0, realOne.text.length - lastPartialWord.length) + replace;
-          console.warn(`selectedWord: ${selectedWord}`);
+          Logger.debug(`Result Word: ${realOne.text}`);
           if (document.querySelector('#controlled-popup-portal .latex-editor__input') !== null) {
             const textarea: HTMLTextAreaElement | null = document?.querySelector(
               '#controlled-popup-portal .latex-editor__input'

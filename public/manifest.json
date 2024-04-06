@@ -8,12 +8,12 @@
   "version": {
     "major": 1,
     "minor": 0,
-    "patch": 15
+    "patch": 16
   },
   "minimumRemNoteVersion": {
     "major": 1,
     "minor": 0,
-    "patch": 15
+    "patch": 16
   },
   "description": "Provides autocomplete suggestions in a popup menu when user input LaTex math formula.Do a variety of mathematical operations directly in rems.",
   "requestNative": true,
