@@ -10,7 +10,7 @@
 
 ## Update
 
-- You should open Native Mode to allow plugin to insert text into latex box.
+- You should open Native Mode to allow plugin insert the currently selected suggestion into the editor.
 
 ## How to Use
 
